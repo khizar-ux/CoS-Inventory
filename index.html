@@ -71,7 +71,7 @@
   </div>
 
   <script>
-    const scriptURL = "https://script.google.com/a/macros/denselight.com/s/AKfycbxouk1fb7-BBaakaJ8taOeyXoCQIyaqrk6d9VFOEbZwJCjlYom-t7Q6ZhyDC1SA10Ga/exec";  // 🔁 Replace with your Web App URL
+    const scriptURL = "https://script.google.com/a/macros/denselight.com/s/AKfycbxouk1fb7-BBaakaJ8taOeyXoCQIyaqrk6d9VFOEbZwJCjlYom-t7Q6ZhyDC1SA10Ga/exec";
 
     // ✅ LOGIN WITH SHA-256
     function login() {
@@ -81,6 +81,7 @@
 
       fetch(scriptURL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'login',
           payload: { id, passwordHash }
@@ -89,9 +90,11 @@
       .then(res => res.json())
       .then(data => {
         if (data.success) {
-          document.getElementById('loginResult').innerHTML = `<span class="success">✅ Welcome ${data.name} (${data.role})</span>`;
+          document.getElementById('loginResult').innerHTML =
+            `<span class="success">✅ Welcome ${data.name} (${data.role})</span>`;
         } else {
-          document.getElementById('loginResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+          document.getElementById('loginResult').innerHTML =
+            `<span class="error">❌ ${data.message}</span>`;
         }
       });
     }
@@ -109,6 +112,7 @@
 
       fetch(scriptURL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'submitTransaction',
           payload: { part, model, qty, action, operatorId, operatorName, timestamp, week }
@@ -119,7 +123,7 @@
         document.getElementById('txnResult').innerHTML =
           data.success ? `<span class="success">✅ Transaction recorded</span>` :
                          `<span class="error">❌ Failed to record</span>`;
-        loadInventory(); // auto-refresh
+        loadInventory(); // refresh live table
       });
     }
 
@@ -131,6 +135,7 @@
 
       fetch(scriptURL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'addMasterPart',
           payload: { name, model, drawing }
@@ -141,7 +146,7 @@
         document.getElementById('partResult').innerHTML =
           data.success ? `<span class="success">✅ Part added to master list</span>` :
                          `<span class="error">❌ Failed to add part</span>`;
-        loadPartDropdown(); // auto-refresh dropdown
+        loadPartDropdown(); // refresh dropdown
       });
     }
 
@@ -149,6 +154,7 @@
     function loadPartDropdown() {
       fetch(scriptURL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getMasterParts' })
       })
       .then(res => res.json())
@@ -168,6 +174,7 @@
     function loadInventory() {
       fetch(scriptURL, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'getInventory' })
       })
       .then(res => res.json())
