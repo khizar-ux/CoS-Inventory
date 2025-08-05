@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CoS Inventory System</title>
+  <meta charset="utf-8" />
+  <script src="https://cdn.jsdelivr.net/npm/js-sha256@0.9.0/src/sha256.min.js"></script>
+  <style>
+    body { font-family: Arial; margin: 20px; background: #f4faff; }
+    h2 { color: #003366; }
+    .box {
+      background: #fff; border: 1px solid #ccc; border-radius: 8px;
+      padding: 15px; margin-bottom: 20px; max-width: 600px;
+    }
+    input, select, button {
+      display: block; width: 100%; padding: 8px; margin-top: 5px; margin-bottom: 15px;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: left; }
+    .success { color: green; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h2>CoS Inventory Management</h2>
+
+  <!-- 🔐 LOGIN -->
+  <div class="box">
+    <h3>🔐 Login</h3>
+    <input id="loginId" placeholder="User ID">
+    <input id="loginPwd" placeholder="Password" type="password">
+    <button onclick="login()">Login</button>
+    <div id="loginResult"></div>
+  </div>
+
+  <!-- 📦 TRANSACTION -->
+  <div class="box">
+    <h3>📦 Add / Withdraw Part</h3>
+    <select id="action">
+      <option value="Add">Add</option>
+      <option value="Withdraw">Withdraw</option>
+    </select>
+    <select id="partDropdown"></select>
+    <input id="model" placeholder="Model No">
+    <input id="qty" type="number" placeholder="Quantity">
+    <input id="operatorName" placeholder="Operator Name">
+    <input id="operatorId" placeholder="Operator ID">
+    <button onclick="submitTransaction()">Submit</button>
+    <div id="txnResult"></div>
+  </div>
+
+  <!-- ➕ MASTER PART -->
+  <div class="box">
+    <h3>➕ Add Master Part</h3>
+    <input id="mpName" placeholder="Part Name">
+    <input id="mpModel" placeholder="Model No">
+    <input id="mpDrawing" placeholder="Drawing No">
+    <button onclick="addPart()">Add Master Part</button>
+    <div id="partResult"></div>
+  </div>
+
+  <!-- 📊 LIVE INVENTORY -->
+  <div class="box">
+    <h3>📊 Live Inventory</h3>
+    <button onclick="loadInventory()">Refresh Inventory</button>
+    <table id="inventoryTable">
+      <thead>
+        <tr><th>Part</th><th>Model</th><th>Quantity</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const scriptURL = "https://script.google.com/a/macros/denselight.com/s/AKfycbxouk1fb7-BBaakaJ8taOeyXoCQIyaqrk6d9VFOEbZwJCjlYom-t7Q6ZhyDC1SA10Ga/exec";  // 🔁 Replace with your Web App URL
+
+    // ✅ LOGIN WITH SHA-256
+    function login() {
+      const id = document.getElementById('loginId').value;
+      const pwd = document.getElementById('loginPwd').value;
+      const passwordHash = sha256(pwd);
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'login',
+          payload: { id, passwordHash }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          document.getElementById('loginResult').innerHTML = `<span class="success">✅ Welcome ${data.name} (${data.role})</span>`;
+        } else {
+          document.getElementById('loginResult').innerHTML = `<span class="error">❌ ${data.message}</span>`;
+        }
+      });
+    }
+
+    // ✅ TRANSACTION SUBMIT
+    function submitTransaction() {
+      const part = document.getElementById('partDropdown').value;
+      const model = document.getElementById('model').value;
+      const qty = parseInt(document.getElementById('qty').value);
+      const action = document.getElementById('action').value;
+      const operatorId = document.getElementById('operatorId').value;
+      const operatorName = document.getElementById('operatorName').value;
+      const timestamp = new Date().toLocaleString('en-SG', { timeZone: 'Asia/Singapore' });
+      const week = getWeekNumber(new Date());
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'submitTransaction',
+          payload: { part, model, qty, action, operatorId, operatorName, timestamp, week }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('txnResult').innerHTML =
+          data.success ? `<span class="success">✅ Transaction recorded</span>` :
+                         `<span class="error">❌ Failed to record</span>`;
+        loadInventory(); // auto-refresh
+      });
+    }
+
+    // ✅ ADD MASTER PART
+    function addPart() {
+      const name = document.getElementById('mpName').value;
+      const model = document.getElementById('mpModel').value;
+      const drawing = document.getElementById('mpDrawing').value;
+
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'addMasterPart',
+          payload: { name, model, drawing }
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById('partResult').innerHTML =
+          data.success ? `<span class="success">✅ Part added to master list</span>` :
+                         `<span class="error">❌ Failed to add part</span>`;
+        loadPartDropdown(); // auto-refresh dropdown
+      });
+    }
+
+    // ✅ LOAD MASTER PART DROPDOWN
+    function loadPartDropdown() {
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getMasterParts' })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const dropdown = document.getElementById('partDropdown');
+        dropdown.innerHTML = '';
+        data.parts.forEach(p => {
+          const option = document.createElement('option');
+          option.value = p.name;
+          option.textContent = p.name;
+          dropdown.appendChild(option);
+        });
+      });
+    }
+
+    // ✅ LOAD INVENTORY TABLE
+    function loadInventory() {
+      fetch(scriptURL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'getInventory' })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById('inventoryTable').querySelector('tbody');
+        tbody.innerHTML = '';
+        data.inventory.forEach(row => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${row.part}</td><td>${row.model}</td><td>${row.qty}</td>`;
+          tbody.appendChild(tr);
+        });
+      });
+    }
+
+    // ✅ WEEK NUMBER UTILITY
+    function getWeekNumber(date) {
+      const start = new Date(date.getFullYear(), 0, 1);
+      const days = Math.floor((date - start) / (24 * 60 * 60 * 1000));
+      return Math.ceil((date.getDay() + 1 + days) / 7);
+    }
+
+    // ✅ INITIAL LOAD
+    loadPartDropdown();
+    loadInventory();
+  </script>
+</body>
+</html>
